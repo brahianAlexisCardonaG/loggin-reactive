@@ -17,39 +17,38 @@ import static com.person.project.domain.enums.RoleUserEnum.ADMIN;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private static final String[] WHITE_LIST_URL = { "/api/v1/auth/**" };
+    private static final String[] WHITE_LIST_URL = {
+            "/api/v1/auth/**",
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/webjars/**"
+    };
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    // Usa el bean reactivo que configuras previamente
     private final ReactiveAuthenticationManager reactiveAuthenticationManager;
-    // Asegúrate de que este bean implemente ServerLogoutHandler (p. ej., SecurityContextServerLogoutHandler)
     private final ServerLogoutHandler logoutHandler;
 
     @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http) {
-        return http
-                // Deshabilitar CSRF para APIs stateless
+        http
                 .csrf(csrf -> csrf.disable())
-                // Al no usar sesiones, indicamos que el repositorio de contexto de seguridad no haga persistencia
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(WHITE_LIST_URL).permitAll()
-                        .pathMatchers("/test").hasAnyRole(ADMIN.name())
+                        .pathMatchers("/api/v1/person/bootcamp").hasAnyRole("ADMIN","USER")
                         .anyExchange().authenticated()
                 )
-                // Usamos el reactive authentication manager
                 .authenticationManager(reactiveAuthenticationManager)
-                // Agregamos nuestro filtro JWT reactivo en la posición de autenticación
                 .addFilterAt(jwtAuthFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-                // Configuramos el logout
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")
                         .logoutHandler(logoutHandler)
                         .logoutSuccessHandler((exchange, authentication) -> {
-                            // Para logout reactivo, basta con devolver un Mono vacío
                             return Mono.empty();
                         })
-                )
-                .build();
+                );
+        return http.build();
     }
 }

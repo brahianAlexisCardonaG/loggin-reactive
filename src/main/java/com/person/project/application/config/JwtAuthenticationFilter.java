@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter implements WebFilter {
                         // Si el token es válido, creamos el token de autenticación
                         if (jwtService.isTokenValid(jwt, userDetails)) {
                             UsernamePasswordAuthenticationToken authToken =
-                                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                                    new UsernamePasswordAuthenticationToken(userDetails, jwt, userDetails.getAuthorities());
                             // Colocamos la autenticación en el contexto reactivo
                             return chain.filter(exchange)
                                     .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authToken));
