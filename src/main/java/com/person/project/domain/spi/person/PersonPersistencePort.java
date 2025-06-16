@@ -7,5 +7,4 @@ public interface PersonPersistencePort {
     Mono<Person> findByEmail(String email);
     Mono<Person> save(Person user);
     Mono<Person> findById(Long personId);
-
 }

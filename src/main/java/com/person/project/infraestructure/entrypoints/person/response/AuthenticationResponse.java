@@ -1,4 +1,4 @@
-package com.person.project.domain.model;
+package com.person.project.infraestructure.entrypoints.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
