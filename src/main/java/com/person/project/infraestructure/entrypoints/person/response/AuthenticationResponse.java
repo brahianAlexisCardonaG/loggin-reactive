@@ -1,4 +1,4 @@
-package com.person.project.infraestructure.entrypoints.util;
+package com.person.project.infraestructure.entrypoints.person.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

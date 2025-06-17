@@ -2,6 +2,7 @@ package com.person.project.domain.usecase.personbootcamp.util;
 
 import com.person.project.domain.enums.TechnicalMessage;
 import com.person.project.domain.exception.BusinessException;
+import com.person.project.domain.model.bootcamp.Bootcamp;
 import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.response.bootcamp.BootcampResponse;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -11,7 +12,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class ValidationPersonBootcamp {
-    public Mono<List<BootcampResponse>> validateNumberBootcamps(List<BootcampResponse> existingBootcamps, List<BootcampResponse> newBootcamps) {
+    public Mono<List<Bootcamp>> validateNumberBootcamps(List<Bootcamp> existingBootcamps,
+                                                                List<Bootcamp> newBootcamps) {
         int total = existingBootcamps.size() + newBootcamps.size();
 
         if (total > 5) {
@@ -26,7 +28,7 @@ public class ValidationPersonBootcamp {
     }
 
     //TODO fecha y duracion entre bootcamps diferentes diferentes
-    public Mono<Void> validateUniqueReleaseDateAndDuration(List<BootcampResponse> bootcamps) {
+    public Mono<Void> validateUniqueReleaseDateAndDuration(List<Bootcamp> bootcamps) {
         boolean hasDuplicate = bootcamps.stream()
                 .collect(Collectors.groupingBy(
                         b -> b.getReleaseDate() + "-" + b.getDuration(),

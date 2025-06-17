@@ -21,7 +21,8 @@ public enum TechnicalMessage {
     BOOTCAMP_FIVE_ASSOCIATION("404-3", "A person cannot have more than 5 associated bootcamp", ""),
     BOOTCAMP_DATE_DURATION_DUPLICATED("404-4","Bootcamps with the same date and duration are not allowed.",""),
     BOOTCAMP_DUPLICATES_IDS("400-5","Check the input data, it is trying to save the same bootcamps",""),
-    BOOTCAMP_ALREADY_ASSOCIATED("400-5","One or more of the bootcamps are already related to this person","")
+    BOOTCAMP_ALREADY_ASSOCIATED("400-6","One or more of the bootcamps are already related to this person",""),
+    BOOTCAMP_PERSON_MAX_NUMBER_PERSONS("200","Bootcamp with max number of person found","")
     ;
 
     private final String code;

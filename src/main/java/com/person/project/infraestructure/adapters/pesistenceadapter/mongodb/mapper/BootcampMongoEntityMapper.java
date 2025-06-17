@@ -1,10 +1,11 @@
-package com.bootcamp.project.infraestructure.persistenceadapter.mongodb.mapper;
+package com.person.project.infraestructure.adapters.pesistenceadapter.mongodb.mapper;
 
-import com.bootcamp.project.domain.model.bootcampmongo.BootcampMongo;
-import com.bootcamp.project.infraestructure.persistenceadapter.mongodb.entity.BootcampMongoEntity;
+import com.person.project.domain.model.bootcampmongo.BootcampMongo;
+import com.person.project.infraestructure.adapters.pesistenceadapter.mongodb.entity.BootcampMongoEntity;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface BootcampMongoEntityMapper {
     BootcampMongoEntity toEntity(BootcampMongo bootcampMongo);
+    BootcampMongo toDomain(BootcampMongoEntity bootcampMongoEntity);
 }

@@ -2,10 +2,15 @@ package com.person.project.infraestructure.entrypoints.personbootcamp.handler;
 
 import com.person.project.domain.api.PersonBootcampServicePort;
 import com.person.project.domain.enums.TechnicalMessage;
+import com.person.project.domain.model.bootcamp.BootcampPersonList;
 import com.person.project.domain.model.bootcamp.PersonListBootcamp;
+import com.person.project.domain.model.person.PersonBasic;
+import com.person.project.infraestructure.entrypoints.person.response.PersonBasicResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.dto.PersonBootcampDto;
 import com.person.project.infraestructure.entrypoints.personbootcamp.mapper.PersonBootcampMapper;
+import com.person.project.infraestructure.entrypoints.personbootcamp.response.ApiBootcampPersonListResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.response.ApiPersonBootcampListResponse;
+import com.person.project.infraestructure.entrypoints.personbootcamp.response.BootcampPersonListResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.response.PersonListBootcampResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.validation.ValidationDtoPersonBootcamp;
 import com.person.project.infraestructure.entrypoints.util.error.ApplyErrorHandler;
@@ -22,14 +27,14 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
-import static org.springframework.web.reactive.function.server.RequestPredicates.accept;
+import static org.springframework.web.reactive.function.server.RequestPredicates.*;
 
 @ExtendWith(MockitoExtension.class)
 public class PersonBootcampHandlerImplTest {
@@ -52,13 +57,9 @@ public class PersonBootcampHandlerImplTest {
 
     @BeforeEach
     public void setUp() {
-        // Configuramos el RouterFunction para exponer el endpoint del handler
         RouterFunction<ServerResponse> routerFunction = RouterFunctions
                 .route(POST("/person-bootcamp").and(accept(MediaType.APPLICATION_JSON)),
                         personBootcampHandlerImpl::createPersonRelateBootcamp);
-
-        // Para los tests se simula que el ApplyErrorHandler no modifica el flujo,
-        // devolviendo el mismo Mono recibido.
         when(applyErrorHandler.applyErrorHandling(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         webTestClient = WebTestClient.bindToRouterFunction(routerFunction).build();
@@ -71,13 +72,10 @@ public class PersonBootcampHandlerImplTest {
         dto.setPersonId(1L);
         dto.setBootcampIds(List.of(100L, 200L));
 
-        // Simulamos que las validaciones pasan devolviendo el DTO sin modificar.
         when(validationDtoPersonBootcamp.validateDuplicateIds(any(PersonBootcampDto.class)))
                 .thenReturn(Mono.just(dto));
         when(validationDtoPersonBootcamp.validateFieldNotNullOrBlank(any(PersonBootcampDto.class)))
                 .thenReturn(Mono.just(dto));
-
-        // Creamos un objeto dummy para representar la entidad de dominio
         PersonListBootcamp personListBootcamp = PersonListBootcamp.builder()
                 .id(1L)
                 .name("Test Bootcamp")
@@ -87,12 +85,10 @@ public class PersonBootcampHandlerImplTest {
         when(personBootcampServicePort.saveBootcampCapability(dto.getPersonId(), dto.getBootcampIds()))
                 .thenReturn(Mono.just(List.of(personListBootcamp)));
 
-        // Simulamos el mapeo de la entidad a la respuesta esperada
         PersonListBootcampResponse responseDto = new PersonListBootcampResponse();
         when(personBootcampMapper.toPersonListBootcampResponse(any(PersonListBootcamp.class)))
                 .thenReturn(responseDto);
 
-        // Act & Assert
         webTestClient.post()
                 .uri("/person-bootcamp")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -108,7 +104,6 @@ public class PersonBootcampHandlerImplTest {
                     assertEquals(TechnicalMessage.PERSON_BOOTCAMP_CREATED.getMessage(), apiResponse.getMessage());
                     assertNotNull(apiResponse.getDate());
                     assertNotNull(apiResponse.getData());
-                    // Se espera que la lista mapeada tenga un elemento
                     assertEquals(1, apiResponse.getData().size());
                 });
 
@@ -120,7 +115,6 @@ public class PersonBootcampHandlerImplTest {
 
     @Test
     public void testCreatePersonRelateBootcamp_ValidationError() {
-        // Arrange: Creamos un DTO con bootcampIds duplicados para provocar un error de validación.
         PersonBootcampDto dto = new PersonBootcampDto();
         dto.setPersonId(1L);
         dto.setBootcampIds(List.of(100L, 100L));
@@ -129,7 +123,6 @@ public class PersonBootcampHandlerImplTest {
         when(validationDtoPersonBootcamp.validateDuplicateIds(any(PersonBootcampDto.class)))
                 .thenReturn(Mono.error(exception));
 
-        // Act & Assert: Se espera que la ruta retorne un error (status 5xx en este ejemplo; ajústalo según tu lógica de errores).
         webTestClient.post()
                 .uri("/person-bootcamp")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -137,9 +130,67 @@ public class PersonBootcampHandlerImplTest {
                 .exchange()
                 .expectStatus().is5xxServerError();
 
-        // Verificamos que solo se invoque la validación inicial y que no continúe el proceso
         verify(validationDtoPersonBootcamp, times(1)).validateDuplicateIds(any(PersonBootcampDto.class));
         verify(validationDtoPersonBootcamp, never()).validateFieldNotNullOrBlank(any(PersonBootcampDto.class));
         verify(personBootcampServicePort, never()).saveBootcampCapability(anyLong(), any());
     }
+
+    @Test
+    public void testGetPersonsByBootcampsByIdMaxNumberPerson_success() {
+        BootcampPersonList bootcampPersonList = BootcampPersonList.builder()
+                .idBootcamp(101L)
+                .name("Bootcamp Max")
+                .releaseDate(LocalDate.of(2025, 6, 1))
+                .duration(45)
+                .persons(List.of(
+                        PersonBasic.builder().id(1L).name("Alice").email("alice@example.com").build(),
+                        PersonBasic.builder().id(2L).name("Bob").email("bob@example.com").build()
+                ))
+                .build();
+
+        BootcampPersonListResponse mappedResponseDto = BootcampPersonListResponse.builder()
+                .idBootcamp(101L)
+                .name("Bootcamp Max")
+                .releaseDate(LocalDate.of(2025, 6, 1))
+                .duration(45)
+                .persons(List.of(
+                        new PersonBasicResponse(1L, "Alice", "alice@example.com"),
+                        new PersonBasicResponse(2L, "Bob", "bob@example.com")
+                ))
+                .build();
+
+
+        when(personBootcampServicePort.getPersonsByBootcampsByIdMaxNumberPerson())
+                .thenReturn(Mono.just(bootcampPersonList));
+        when(personBootcampMapper.toBootcampPersonListResponse(any(BootcampPersonList.class)))
+                .thenReturn(mappedResponseDto);
+
+       when(applyErrorHandler.applyErrorHandling(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        RouterFunction<ServerResponse> routerFunction = RouterFunctions
+                .route(GET("/api/v1/person/bootcamp/get-bootcamp-person").and(accept(MediaType.APPLICATION_JSON)),
+                        personBootcampHandlerImpl::getPersonsByBootcampsByIdMaxNumberPerson);
+
+        WebTestClient testClient = WebTestClient.bindToRouterFunction(routerFunction).build();
+
+        testClient.get()
+                .uri("/api/v1/person/bootcamp/get-bootcamp-person")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody(ApiBootcampPersonListResponse.class)
+                .value(apiResponse -> {
+                    assertNotNull(apiResponse);
+                    assertEquals(TechnicalMessage.BOOTCAMP_PERSON_MAX_NUMBER_PERSONS.getCode(), apiResponse.getCode());
+                    assertEquals(TechnicalMessage.BOOTCAMP_PERSON_MAX_NUMBER_PERSONS.getMessage(), apiResponse.getMessage());
+                    assertNotNull(apiResponse.getDate());
+                    BootcampPersonListResponse data = apiResponse.getData();
+                    assertNotNull(data);
+                    assertEquals(mappedResponseDto.getIdBootcamp(), data.getIdBootcamp());
+                    assertEquals(mappedResponseDto.getName(), data.getName());
+                    assertEquals(mappedResponseDto.getPersons().size(), data.getPersons().size());
+                });
+    }
+
 }

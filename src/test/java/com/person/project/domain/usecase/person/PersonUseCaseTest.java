@@ -1,9 +1,9 @@
 package com.person.project.domain.usecase.person;
 
 import com.person.project.application.config.JwtService;
-import com.person.project.domain.model.AuthenticationResponse;
-import com.person.project.domain.model.Person;
-import com.person.project.domain.spi.PersonPersistencePort;
+import com.person.project.infraestructure.entrypoints.person.response.AuthenticationResponse;
+import com.person.project.domain.model.person.Person;
+import com.person.project.domain.spi.person.PersonPersistencePort;
 import com.person.project.domain.util.DomainPersonDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

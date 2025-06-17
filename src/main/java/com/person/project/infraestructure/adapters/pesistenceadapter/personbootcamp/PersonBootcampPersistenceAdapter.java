@@ -1,6 +1,6 @@
 package com.person.project.infraestructure.adapters.pesistenceadapter.personbootcamp;
 
-import com.person.project.domain.spi.PersonBootcampPersistencePort;
+import com.person.project.domain.spi.person.PersonBootcampPersistencePort;
 import com.person.project.infraestructure.adapters.pesistenceadapter.personbootcamp.entity.PersonBootcampEntity;
 import com.person.project.infraestructure.adapters.pesistenceadapter.personbootcamp.repository.PersonBootcampRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,5 +27,12 @@ public class PersonBootcampPersistenceAdapter implements PersonBootcampPersisten
                 .collectList()
                 .flatMapMany(personBootcampRepository::saveAll)
                 .then();
+    }
+
+    @Override
+    public Mono<List<Long>> findPersonIdsByBootcampId(Long bootcampId) {
+        return personBootcampRepository.findByIdBootcamp(bootcampId)
+                .map(PersonBootcampEntity::getIdPerson)
+                .collectList();
     }
 }

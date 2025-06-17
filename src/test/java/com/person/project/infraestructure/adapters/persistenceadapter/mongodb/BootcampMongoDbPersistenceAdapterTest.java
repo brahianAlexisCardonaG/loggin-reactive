@@ -1,4 +1,4 @@
-package com.person.project.infraestructure.adapters.persistenceadapter.mogodb;
+package com.person.project.infraestructure.adapters.persistenceadapter.mongodb;
 
 import com.person.project.domain.model.bootcampmongo.BootcampMongo;
 import com.person.project.domain.spi.bootcampmongo.BootcampMongoPersistencePort;
@@ -9,9 +9,10 @@ import com.person.project.infraestructure.adapters.pesistenceadapter.mongodb.rep
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -19,6 +20,8 @@ import reactor.test.StepVerifier;
 import java.time.LocalDate;
 import java.util.List;
 
+import static com.mongodb.client.model.Filters.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
@@ -29,11 +32,15 @@ public class BootcampMongoDbPersistenceAdapterTest {
 
     @Mock
     private BootcampMongoEntityMapper bootcampMongoEntityMapper;
+
+    @Mock
+    ReactiveMongoTemplate reactiveMongoTemplate;
+
     private BootcampMongoPersistencePort adapter;
 
     @BeforeEach
     public void setup() {
-        adapter = new BootcampMongoDbPersistenceAdapter(repository, bootcampMongoEntityMapper);
+        adapter = new BootcampMongoDbPersistenceAdapter(repository, bootcampMongoEntityMapper, reactiveMongoTemplate);
     }
 
     @Test
@@ -54,30 +61,20 @@ public class BootcampMongoDbPersistenceAdapterTest {
                 1L, 10L, "Test Bootcamp", LocalDate.of(2025, 6, 12),
                 30, 0, 0, 1
         );
-
-        // Se simula el mapeo: del dominio a la entidad.
         when(bootcampMongoEntityMapper.toEntity(domain)).thenReturn(entity);
-        // Se simula que el repositorio guarda la entidad y la retorna.
         when(repository.saveAll(anyList()))
                 .thenReturn(Flux.just(entity));
-
-        // Ejecutamos el método updateNumberPersons.
         Mono<Void> result = adapter.updateNumberPersons(Flux.just(domain));
-
-        // Verificamos que se complete sin error.
         StepVerifier.create(result)
                 .verifyComplete();
     }
 
     @Test
     public void testFindBootcampIds_success() {
-        // Simula un dummy de entidad que retorna el repositorio.
         BootcampMongoEntity entity = new BootcampMongoEntity(
                 1L, 10L, "Test Bootcamp", LocalDate.of(2025, 6, 12),
                 30, 0, 0, 1
         );
-
-        // El mapper convertirá la entidad en el objeto de dominio.
         BootcampMongo domain = BootcampMongo.builder()
                 .id(1L)
                 .idBootcamp(10L)
@@ -88,17 +85,10 @@ public class BootcampMongoDbPersistenceAdapterTest {
                 .numberTechnologies(0)
                 .numberPersons(1)
                 .build();
-
-        // Se configura el repositorio para que retorne la entidad a partir del query.
         when(repository.findByIdBootcampIn(List.of(10L)))
                 .thenReturn(Flux.just(entity));
-        // Y el mapper para convertir la entidad en dominio.
         when(bootcampMongoEntityMapper.toDomain(entity)).thenReturn(domain);
-
-        // Ejecutamos el método findBootcampIds.
         Mono<List<BootcampMongo>> result = adapter.findBootcampIds(List.of(10L));
-
-        // Verificamos que se retorne una lista con el dummy esperado.
         StepVerifier.create(result)
                 .assertNext(list -> {
                     assert list.size() == 1;
@@ -106,4 +96,40 @@ public class BootcampMongoDbPersistenceAdapterTest {
                 })
                 .verifyComplete();
     }
+
+    @Test
+    public void testFindBootcampByMaxNumberPersons_success() {
+        // Arrange – simulamos entidad y dominio
+        BootcampMongoEntity entity = new BootcampMongoEntity(
+                1L, 10L, "Max Bootcamp", LocalDate.of(2025, 6, 12),
+                30, 5, 8, 20
+        );
+
+        BootcampMongo expectedDomain = BootcampMongo.builder()
+                .id(1L)
+                .idBootcamp(10L)
+                .name("Max Bootcamp")
+                .releaseDate(LocalDate.of(2025, 6, 12))
+                .duration(30)
+                .numberCapabilities(5)
+                .numberTechnologies(8)
+                .numberPersons(20)
+                .build();
+
+        // Simulamos la agregación de Mongo que retorna un Flux con un único resultado
+        when(reactiveMongoTemplate.aggregate(
+                any(Aggregation.class),
+                any(Class.class),
+                any(Class.class)
+        )).thenReturn(Flux.just(entity));
+
+        // Act
+        Mono<BootcampMongo> result = adapter.findBootcampByMaxNumberPersons();
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(actual -> actual.equals(expectedDomain))
+                .verifyComplete();
+    }
+
 }

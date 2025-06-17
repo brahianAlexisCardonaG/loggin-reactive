@@ -1,7 +1,7 @@
 package com.person.project.infraestructure.entrypoints.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.person.project.domain.model.AuthenticationResponse;
+import com.person.project.infraestructure.entrypoints.person.response.AuthenticationResponse;
 import lombok.*;
 
 import java.util.List;

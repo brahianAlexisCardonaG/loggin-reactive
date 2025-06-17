@@ -1,4 +1,4 @@
-package com.person.project.domain.model;
+package com.person.project.domain.model.person;
 
 import com.person.project.domain.enums.RoleUserEnum;
 import lombok.AllArgsConstructor;

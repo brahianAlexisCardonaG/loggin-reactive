@@ -1,9 +1,10 @@
 package com.person.project.application.config;
 
 import com.person.project.domain.api.PersonBootcampServicePort;
-import com.person.project.domain.spi.BootcampWebClientPort;
-import com.person.project.domain.spi.PersonBootcampPersistencePort;
-import com.person.project.domain.spi.PersonPersistencePort;
+import com.person.project.domain.spi.bootcamp.BootcampWebClientPort;
+import com.person.project.domain.spi.bootcampmongo.BootcampMongoPersistencePort;
+import com.person.project.domain.spi.person.PersonBootcampPersistencePort;
+import com.person.project.domain.spi.person.PersonPersistencePort;
 import com.person.project.domain.usecase.personbootcamp.PersonBootcampUseCase;
 import com.person.project.domain.usecase.personbootcamp.util.ValidationPersonBootcamp;
 import com.person.project.infraestructure.adapters.pesistenceadapter.personbootcamp.PersonBootcampPersistenceAdapter;
@@ -30,12 +31,14 @@ public class ApplicationConfigPersonBootcamp {
                                                                BootcampWebClientPort bootcampWebClientPort,
                                                                PersonPersistencePort personPersistencePort,
                                                                PersonBootcampPersistencePort personBootcampPersistencePort,
-                                                               ValidationPersonBootcamp validationPersonBootcamp) {
+                                                               ValidationPersonBootcamp validationPersonBootcamp,
+                                                               BootcampMongoPersistencePort bootcampMongoPersistencePort) {
         return new PersonBootcampUseCase(transactionalOperator,
                                          bootcampWebClientPort,
                                          personPersistencePort,
                                          personBootcampPersistencePort,
-                                         validationPersonBootcamp
+                                         validationPersonBootcamp,
+                                         bootcampMongoPersistencePort
                 );
     }
 }

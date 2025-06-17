@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux;
 @Repository
 public interface PersonBootcampRepository extends ReactiveCrudRepository<PersonBootcampEntity,Long> {
     Flux<PersonBootcampEntity> findByIdPerson(Long personId);
+    Flux<PersonBootcampEntity> findByIdBootcamp(Long bootcampId);
 }

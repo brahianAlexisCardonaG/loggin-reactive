@@ -1,6 +1,5 @@
 package com.person.project.infraestructure.entrypoints.personbootcamp;
 
-import com.person.project.infraestructure.entrypoints.person.handler.PersonHandlerImpl;
 import com.person.project.infraestructure.entrypoints.personbootcamp.dto.PersonBootcampDto;
 import com.person.project.infraestructure.entrypoints.personbootcamp.handler.PersonBootcampHandlerImpl;
 import com.person.project.infraestructure.entrypoints.personbootcamp.response.PersonListBootcampResponse;
@@ -19,11 +18,13 @@ import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
 import static com.person.project.infraestructure.entrypoints.util.Constants.*;
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 
 @Configuration
@@ -63,9 +64,37 @@ public class RouterRestPersonBootcamp {
                             }
                     )
             ),
+            @RouterOperation(
+                    path = PATH_BOOTCAMP_PERSON_GET_MAX_NUMBER_PERSON,
+                    produces = { "application/json" },
+                    method = RequestMethod.GET,
+                    beanClass = PersonBootcampHandlerImpl.class,
+                    beanMethod = "getPersonsByBootcampsByIdMaxNumberPerson",
+                    operation = @Operation(
+                            operationId = "getPersonsByBootcampsByIdMaxNumberPerson",
+                            summary = "Get bootcampId and persons by bootcamp with max numbers of persons registers",
+                            tags = { "Endpoints webclients" },
+                            security = @SecurityRequirement(name = "BearerAuth"),
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Bootcamps found",
+                                            content = @Content(schema = @Schema(implementation = ApiResponseBase.class))
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "400",
+                                            description = "Invalid query parameters"
+                                    ),
+                                    @ApiResponse(responseCode = "401", description = "Unauthorized")
+                            }
+                    )
+            )
     })
     public RouterFunction<ServerResponse> routerFunctionPersonBootcamp(PersonBootcampHandlerImpl personBootcampHandler) {
         return RouterFunctions
-                .route(POST(PATH_PERSON_BOOTCAMP_CREATE), personBootcampHandler::createPersonRelateBootcamp);
+                .route(POST(PATH_PERSON_BOOTCAMP_CREATE),
+                        personBootcampHandler::createPersonRelateBootcamp)
+                .andRoute(GET(PATH_BOOTCAMP_PERSON_GET_MAX_NUMBER_PERSON),
+                        personBootcampHandler::getPersonsByBootcampsByIdMaxNumberPerson);
     }
 }

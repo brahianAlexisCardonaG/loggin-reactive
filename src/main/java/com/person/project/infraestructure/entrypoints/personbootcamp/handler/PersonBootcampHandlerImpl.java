@@ -4,6 +4,7 @@ import com.person.project.domain.api.PersonBootcampServicePort;
 import com.person.project.domain.enums.TechnicalMessage;
 import com.person.project.infraestructure.entrypoints.personbootcamp.dto.PersonBootcampDto;
 import com.person.project.infraestructure.entrypoints.personbootcamp.mapper.PersonBootcampMapper;
+import com.person.project.infraestructure.entrypoints.personbootcamp.response.ApiBootcampPersonListResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.response.ApiPersonBootcampListResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.response.PersonListBootcampResponse;
 import com.person.project.infraestructure.entrypoints.personbootcamp.validation.ValidationDtoPersonBootcamp;
@@ -57,6 +58,25 @@ public class PersonBootcampHandlerImpl {
                                     .build());
                 }).contextWrite(Context.of(X_MESSAGE_ID, ""))
                 .doOnError(ex -> log.error(PERSON_ERROR, ex));
+
+        return applyErrorHandler.applyErrorHandling(response);
+    }
+
+    public Mono<ServerResponse> getPersonsByBootcampsByIdMaxNumberPerson(ServerRequest request) {
+        Mono<ServerResponse> response = personBootcampServicePort.getPersonsByBootcampsByIdMaxNumberPerson()
+                .map(personBootcampMapper::toBootcampPersonListResponse)
+                .flatMap(bootcamp -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(ApiBootcampPersonListResponse.builder()
+                                .code(TechnicalMessage.BOOTCAMP_PERSON_MAX_NUMBER_PERSONS.getCode())
+                                .message(TechnicalMessage.BOOTCAMP_PERSON_MAX_NUMBER_PERSONS.getMessage())
+                                .date(Instant.now().toString())
+                                .data(bootcamp)
+                                .build()
+                        )
+                )
+                .contextWrite(Context.of(X_MESSAGE_ID, ""))
+                .doOnError(ex -> log.error( PERSON_ERROR, ex));
 
         return applyErrorHandler.applyErrorHandling(response);
     }

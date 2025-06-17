@@ -1,6 +1,6 @@
 package com.person.project.domain.util;
 
-import com.person.project.domain.model.Person;
+import com.person.project.domain.model.person.Person;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

@@ -2,8 +2,8 @@ package com.person.project.infraestructure.entrypoints.person.handler;
 
 import com.person.project.domain.api.PersonServicePort;
 import com.person.project.domain.enums.RoleUserEnum;
-import com.person.project.domain.model.AuthenticationResponse;
-import com.person.project.domain.model.Person;
+import com.person.project.infraestructure.entrypoints.person.response.AuthenticationResponse;
+import com.person.project.domain.model.person.Person;
 import com.person.project.infraestructure.entrypoints.person.dto.AuthenticatePersonDto;
 import com.person.project.infraestructure.entrypoints.person.dto.RegisterPersonDto;
 import com.person.project.infraestructure.entrypoints.person.mapper.PersonMapper;

@@ -1,4 +1,4 @@
-package com.bootcamp.project.domain.model.bootcampmongo;
+package com.person.project.domain.model.bootcampmongo;
 
 import lombok.Builder;
 import lombok.Data;

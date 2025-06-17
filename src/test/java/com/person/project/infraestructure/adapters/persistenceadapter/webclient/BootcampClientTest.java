@@ -1,7 +1,10 @@
 package com.person.project.infraestructure.adapters.persistenceadapter.webclient;
 
+import com.person.project.domain.model.bootcamp.Bootcamp;
 import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.BootcampClient;
+import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.mapper.BootcampResponseMapper;
 import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.response.api.ApiBootcampListResponse;
+import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.response.bootcamp.BootcampResponse;
 import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.util.SendTokenWebClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,6 +42,9 @@ public class BootcampClientTest {
     @Mock
     private WebClient.ResponseSpec responseSpec;
 
+    @Mock
+    private BootcampResponseMapper bootcampResponseMapper;
+
     private BootcampClient bootcampClient;
 
     @BeforeEach
@@ -47,7 +54,7 @@ public class BootcampClientTest {
         when(webClientBuilder.build()).thenReturn(webClient);
 
         SendTokenWebClient sendTokenWebClient = new SendTokenWebClient();
-        bootcampClient = new BootcampClient(webClientBuilder, sendTokenWebClient);
+        bootcampClient = new BootcampClient(webClientBuilder, sendTokenWebClient, bootcampResponseMapper);
     }
 
     @Test
@@ -57,18 +64,35 @@ public class BootcampClientTest {
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
 
-        ApiBootcampListResponse dummyResponse = new ApiBootcampListResponse(); // Mock de respuesta
+        // Creamos un dummy BootcampResponse y lo incluimos en ApiBootcampListResponse.
+        BootcampResponse dummyBootcampResponse = new BootcampResponse(1L, "Bootcamp 1", LocalDate.now(), 30);
+        List<BootcampResponse> bootcampResponseList = List.of(dummyBootcampResponse);
+        ApiBootcampListResponse dummyApiResponse = new ApiBootcampListResponse();
+        dummyApiResponse.setData(bootcampResponseList);
 
+        // Creamos el Bootcamp esperado a partir del dummy.
+        Bootcamp expectedBootcamp = Bootcamp.builder()
+                .id(dummyBootcampResponse.getId())
+                .name(dummyBootcampResponse.getName())
+                .releaseDate(dummyBootcampResponse.getReleaseDate())
+                .duration(dummyBootcampResponse.getDuration())
+                .build();
+
+        // Indicamos al mapper que al mapear el dummyBootcampResponse retorne expectedBootcamp.
+        when(bootcampResponseMapper.toDomain(dummyBootcampResponse)).thenReturn(expectedBootcamp);
+
+        // Configuramos las llamadas del WebClient.
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(ApiBootcampListResponse.class)).thenReturn(Mono.just(dummyResponse));
+        when(responseSpec.bodyToMono(ApiBootcampListResponse.class))
+                .thenReturn(Mono.just(dummyApiResponse));
 
-        Mono<ApiBootcampListResponse> result = bootcampClient.getBootcampsByIds(bootcampIds);
+        Mono<List<Bootcamp>> result = bootcampClient.getBootcampsByIds(bootcampIds);
 
         StepVerifier.create(result)
-                .expectNext(dummyResponse)
+                .expectNext(List.of(expectedBootcamp))
                 .verifyComplete();
 
         verify(webClient).get();

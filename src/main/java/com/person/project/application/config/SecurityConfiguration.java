@@ -38,6 +38,7 @@ public class SecurityConfiguration {
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(WHITE_LIST_URL).permitAll()
                         .pathMatchers("/api/v1/person/bootcamp").hasAnyRole("ADMIN","USER")
+                        .pathMatchers("/api/v1/person/bootcamp/**").hasRole("ADMIN")
                         .anyExchange().authenticated()
                 )
                 .authenticationManager(reactiveAuthenticationManager)

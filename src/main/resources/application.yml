@@ -14,7 +14,9 @@ spring:
   logging:
     level:
       org.springframework.web.reactive.function.server: DEBUG
-
+  data:
+    mongodb:
+      uri: mongodb+srv://userimages:Mbw5MTVfsk8baWb4@bootcamp.n8g1qt9.mongodb.net/bootcamp?retryWrites=true&w=majority&appName=Bootcamp
 application:
   security:
     jwt:

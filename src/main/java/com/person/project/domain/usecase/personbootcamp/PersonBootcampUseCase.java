@@ -5,17 +5,18 @@ import com.person.project.domain.enums.TechnicalMessage;
 import com.person.project.domain.exception.BusinessException;
 import com.person.project.domain.model.bootcamp.Bootcamp;
 import com.person.project.domain.model.bootcamp.PersonListBootcamp;
-import com.person.project.domain.spi.BootcampWebClientPort;
-import com.person.project.domain.spi.PersonBootcampPersistencePort;
-import com.person.project.domain.spi.PersonPersistencePort;
+import com.person.project.domain.model.bootcamp.BootcampPersonList;
+import com.person.project.domain.spi.bootcamp.BootcampWebClientPort;
+import com.person.project.domain.spi.bootcampmongo.BootcampMongoPersistencePort;
+import com.person.project.domain.spi.person.PersonBootcampPersistencePort;
+import com.person.project.domain.spi.person.PersonPersistencePort;
 import com.person.project.domain.usecase.personbootcamp.util.ValidationPersonBootcamp;
-import com.person.project.infraestructure.adapters.pesistenceadapter.webclient.response.bootcamp.BootcampResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class PersonBootcampUseCase implements PersonBootcampServicePort {
@@ -25,6 +26,7 @@ public class PersonBootcampUseCase implements PersonBootcampServicePort {
     private final PersonPersistencePort personPersistencePort;
     private final PersonBootcampPersistencePort personBootcampPersistencePort;
     private final ValidationPersonBootcamp validationPersonBootcamp;
+    private final BootcampMongoPersistencePort bootcampMongoPersistencePort;
 
     @Override
     public Mono<List<PersonListBootcamp>> saveBootcampCapability(Long personId, List<Long> bootcampIds) {
@@ -32,73 +34,92 @@ public class PersonBootcampUseCase implements PersonBootcampServicePort {
                 personPersistencePort.findById(personId)
                         .switchIfEmpty(Mono.error(new BusinessException(TechnicalMessage.PERSON_NOT_EXIST)))
                         .flatMap(person ->
-                                // Obtenemos en paralelo:
-                                // a) Bootcamp IDs ya asociados a la persona.
-                                // b) Los bootcamps nuevos solicitados vía WebClient.
                                 Mono.zip(
                                                 personBootcampPersistencePort.findBootcampsByPersonId(personId),
                                                 bootcampWebClientPort.getBootcampsByIds(bootcampIds)
                                         ).flatMap(tuple -> {
                                             List<Long> existingBootcampIds = tuple.getT1();
-                                            List<BootcampResponse> newBootcampResponses = tuple.getT2().getData();
-
-                                            // Validar que ninguno de los bootcamps nuevos ya esté asociado a la persona.
-                                            List<Long> duplicateIds = newBootcampResponses.stream()
-                                                    .map(BootcampResponse::getId)
+                                            List<Bootcamp> newBootcamps = tuple.getT2();
+                                            List<Long> duplicateIds = newBootcamps.stream()
+                                                    .map(Bootcamp::getId)
                                                     .filter(existingBootcampIds::contains)
-                                                    .collect(Collectors.toList());
+                                                    .toList();
                                             if (!duplicateIds.isEmpty()) {
                                                 return Mono.error(new BusinessException(TechnicalMessage.BOOTCAMP_ALREADY_ASSOCIATED));
                                             }
-
-                                            // Recuperar la información completa de los bootcamps ya asociados,
-                                            // si existen, para poder combinarlos y validar.
-                                            Mono<List<BootcampResponse>> existingDetailsMono = existingBootcampIds.isEmpty()
+                                            Mono<List<Bootcamp>> existingDetailsMono = existingBootcampIds.isEmpty()
                                                     ? Mono.just(List.of())
-                                                    : bootcampWebClientPort.getBootcampsByIds(existingBootcampIds)
-                                                    .map(resp -> resp.getData());
+                                                    : bootcampWebClientPort.getBootcampsByIds(existingBootcampIds);
 
-                                            return existingDetailsMono.flatMap(existingBootcampResponses -> {
-                                                // Validación de cantidad total: existentes + nuevos
-                                                return validationPersonBootcamp.validateNumberBootcamps(existingBootcampResponses, newBootcampResponses)
-                                                        .then(Mono.defer(() -> {
-                                                            // Combinar las listas para validar la unicidad de releaseDate y duration.
-                                                            List<BootcampResponse> combinedBootcamps = new java.util.ArrayList<>();
-                                                            combinedBootcamps.addAll(existingBootcampResponses);
-                                                            combinedBootcamps.addAll(newBootcampResponses);
+                                            return existingDetailsMono.flatMap(existingBootcamps ->
+                                                    validationPersonBootcamp.validateNumberBootcamps(existingBootcamps, newBootcamps)
+                                                            .then(Mono.defer(() -> {
+                                                                List<Bootcamp> combinedBootcamps = new java.util.ArrayList<>();
+                                                                combinedBootcamps.addAll(existingBootcamps);
+                                                                combinedBootcamps.addAll(newBootcamps);
 
-                                                            return validationPersonBootcamp.validateUniqueReleaseDateAndDuration(combinedBootcamps)
-                                                                    .thenReturn(newBootcampResponses);
-                                                        }));
-                                            });
+                                                                return validationPersonBootcamp
+                                                                        .validateUniqueReleaseDateAndDuration(combinedBootcamps)
+                                                                        .thenReturn(newBootcamps);
+                                                            }))
+                                            );
                                         })
-                                        .flatMap(newBootcampResponses ->
-                                                // Guarda la relación persona ↔ bootcamp
+                                        .flatMap(newBootc ->
+                                                bootcampMongoPersistencePort.findBootcampIds(bootcampIds)
+                                                        // 2) incrementar numberPersons
+                                                        .flatMapMany(list ->
+                                                                Flux.fromIterable(list)
+                                                                        .map(b -> {
+                                                                            b.setNumberPersons((b
+                                                                                    .getNumberPersons() == null ? 0 : b
+                                                                                    .getNumberPersons()) + 1);
+                                                                            return b;
+                                                                        })
+                                                        )
+                                                        .as(bootcampMongoPersistencePort::updateNumberPersons)
+                                                        .thenReturn(newBootc)
+                                        )
+                                        .flatMap(newBootcamps ->
+                                                // Guarda la relación persona ↔ bootcamp y, luego, construye PersonListBootcamp.
                                                 personBootcampPersistencePort.saveRelations(personId, bootcampIds)
                                                         .then(Mono.defer(() -> {
-                                                            // Mapear cada BootcampResponse a la entidad de dominio Bootcamp.
-                                                            List<Bootcamp> listaBootcamps = newBootcampResponses.stream()
-                                                                    .map(br -> Bootcamp.builder()
-                                                                            .id(br.getId())
-                                                                            .name(br.getName())
-                                                                            .releaseDate(br.getReleaseDate())
-                                                                            .duration(br.getDuration())
-                                                                            .build())
-                                                                    .collect(Collectors.toList());
-
-                                                            // Construir y devolver el PersonListBootcamp.
-                                                            PersonListBootcamp resultado = PersonListBootcamp.builder()
+                                                            PersonListBootcamp result = PersonListBootcamp.builder()
                                                                     .id(person.getId())
                                                                     .name(person.getName())
                                                                     .email(person.getEmail())
-                                                                    .bootcamps(listaBootcamps)
+                                                                    .bootcamps(newBootcamps)
                                                                     .build();
-
-                                                            return Mono.just(List.of(resultado));
+                                                            return Mono.just(List.of(result));
                                                         }))
                                         )
                         )
         );
 
+    }
+
+    @Override
+    public Mono<BootcampPersonList> getPersonsByBootcampsByIdMaxNumberPerson() {
+        return bootcampMongoPersistencePort.findBootcampByMaxNumberPersons()
+                .switchIfEmpty(Mono.error(new BusinessException(TechnicalMessage.BOOTCAMP_NOT_EXIST)))
+                .flatMap(bootcamp ->
+                        personBootcampPersistencePort.findPersonIdsByBootcampId(bootcamp.getIdBootcamp())
+                                .filter(ids -> ids != null && !ids.isEmpty())
+                                .switchIfEmpty(Mono.error(new BusinessException(TechnicalMessage.PERSON_NOT_EXIST)))
+                                .flatMap(personIds ->
+                                        personPersistencePort.findByIds(personIds)
+                                                .collectList()
+                                                .filter(personList -> personList != null && !personList.isEmpty())
+                                                .switchIfEmpty(Mono.error(new BusinessException(TechnicalMessage.PERSON_NOT_EXIST)))
+                                                .map(personList ->
+                                                        BootcampPersonList.builder()
+                                                                .idBootcamp(bootcamp.getIdBootcamp())
+                                                                .name(bootcamp.getName())
+                                                                .releaseDate(bootcamp.getReleaseDate())
+                                                                .duration(bootcamp.getDuration())
+                                                                .persons(personList)
+                                                                .build()
+                                                )
+                                )
+                );
     }
 }

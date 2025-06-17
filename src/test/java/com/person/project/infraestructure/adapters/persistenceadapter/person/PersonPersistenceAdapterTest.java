@@ -1,7 +1,7 @@
 package com.person.project.infraestructure.adapters.persistenceadapter.person;
 
 import com.person.project.domain.enums.RoleUserEnum;
-import com.person.project.domain.model.Person;
+import com.person.project.domain.model.person.Person;
 import com.person.project.infraestructure.adapters.pesistenceadapter.person.PersonPersistenceAdapter;
 import com.person.project.infraestructure.adapters.pesistenceadapter.person.entity.PersonEntity;
 import com.person.project.infraestructure.adapters.pesistenceadapter.person.mapper.PersonEntityMapper;
