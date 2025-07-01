@@ -15,6 +15,9 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.person.project.infraestructure.adapters.pesistenceadapter.webclient.util.ConstantsWebClient.LOCALHOST_BOOTCAMP;
+import static com.person.project.infraestructure.adapters.pesistenceadapter.webclient.util.ConstantsWebClient.PATH_GET_BOOTCAMPS_BY_IDS;
+
 @Service
 public class BootcampClient implements BootcampWebClientPort {
 
@@ -25,7 +28,7 @@ public class BootcampClient implements BootcampWebClientPort {
                           SendTokenWebClient sendTokenWebClient,
                           BootcampResponseMapper bootcampResponseMapper
     ) {
-        this.webClient = builder.baseUrl("http://localhost:8083")
+        this.webClient = builder.baseUrl(LOCALHOST_BOOTCAMP)
                 .filter(sendTokenWebClient.authHeaderFilter())
                 .build();
         this.bootcampResponseMapper = bootcampResponseMapper;
@@ -38,7 +41,7 @@ public class BootcampClient implements BootcampWebClientPort {
                 .collect(Collectors.joining(","));
 
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder.path("api/v1/bootcamp/by-ids")
+                .uri(uriBuilder -> uriBuilder.path(PATH_GET_BOOTCAMPS_BY_IDS)
                         .queryParam("bootcampIds", idsParam)
                         .build())
                 .retrieve()
